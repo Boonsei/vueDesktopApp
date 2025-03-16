@@ -1,4 +1,5 @@
 <script setup>
+import billAnalizer from "./components/billAnalizer.vue";
 import {ref} from "vue";
 
 const number = ref(0);
@@ -9,15 +10,12 @@ function addNumb (){
 function subTract(){
   number.value--
 }
+
 </script>
 
 <template>
   <div class="home">
-    <div class="container">
-      <button @click="addNumb">Add Number</button>
-      <button @click="subTract">Subtract Number</button>
-      <div>{{ number }}</div>
-    </div>
+    <billAnalizer></billAnalizer>
   </div>
 </template>
 
@@ -27,7 +25,7 @@ function subTract(){
   justify-content: center;
   align-items: center;
   width: 100vw;
-  height: 100vw;
+  height: 100vh;
 }
 .container{
   display: flex;

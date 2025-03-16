@@ -12,21 +12,51 @@
     "electron:build": "electron-builder"
   },
   "dependencies": {
+    "tesseract.js": "^6.0.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {
     "electron-builder": "^25.1.8",
     "@vitejs/plugin-vue": "^5.2.1",
     "electron": "^35.0.1",
+    "electron-builder": "^25.1.8",
     "vite": "^6.2.1",
     "vite-plugin-vue-devtools": "^7.7.2"
   },
   "build": {
-    "appId": "vueDesktopApp",
+    "appId": "com.boonsei.vueDesktopApp",
+    "productName": "VueDesktopApp",
     "mac": {
       "target": "dmg"
     },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build"
+    },
     "files": [
+      "dist/**",
+      "main.js",
+      "preload.js"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "nsis": {
+      "perMachine": false
+    },
+    "npmRebuild": false,
+    "extraFiles": [
       "dist/**",
       "main.js",
       "preload.js"
