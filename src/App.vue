@@ -14,23 +14,10 @@ function subTract(){
 </script>
 
 <template>
-  <div class="home">
+  <div>
     <billAnalizer></billAnalizer>
   </div>
 </template>
 
 <style scoped>
-.home {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100vw;
-  height: 100vh;
-}
-.container{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
 </style>
