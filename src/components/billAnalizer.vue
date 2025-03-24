@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import Tesseract from "tesseract.js";
 import * as pdfjsLib from "pdfjs-dist";
-import nlp from "compromise";
+import nlp from "compromise/three";
 import { parseNumber } from "@/helperFunctions/functions.js";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -21,27 +21,28 @@ const foundData = ref({
 const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (file) {
-        const textArray = await extractTextFromImage(file);
-        const gesamtBetrag = getGesamtBetrag(textArray);
+        const nlpDoc = await extractTextFromImage(file);
+        console.log("HandleFileChange: ",nlpDoc)
+        const gesamtBetrag = getGesamtBetrag(nlpDoc);
         foundData.value.gesamtBetrag = gesamtBetrag.maxNumb;
-        console.log("maxNumb: ", gesamtBetrag.maxNumb);
-        console.log("Options: ", gesamtBetrag.options);
+        //console.log("maxNumb: ", gesamtBetrag.maxNumb);
+        //console.log("Options: ", gesamtBetrag.options);
+        getRechnungsAusteller(nlpDoc)
     }
 };
 
 // Texterkennung aus Bilddatei mit Tesseract.js und pdfjslib.
 const extractTextFromImage = async (file) => {
-    let textArray = [];
 
     if (file.type === "application/pdf") {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let formattedText = ""
 
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const text = await page.getTextContent();
 
-            console.log("Text: ", text);
             let lineMap = new Map();
 
             text.items.forEach((item) => {
@@ -56,52 +57,40 @@ const extractTextFromImage = async (file) => {
 
             const finalArr = sortedMap.map((entry) => entry[1]); //index 1 cause 0 is key of Map
 
-            console.log("FInal Arr: ", finalArr);
-
-            let formattedText = finalArr
+            formattedText += finalArr
                 .map((line) => line.join(" "))
                 .join("\n")
                 .replace(/(\. )/g, "### ");
 
-            console.log("mapped Array for nlp: ", formattedText);
-
-            const doc = nlp(
-                finalArr
-                    .map((line) => line.join(" "))
-                    .join("\n")
-                    .replace(/(\. )/g, "### "),
-            );
-
-            doc.document.forEach((nlpLine) => textArray.push(nlpLine));
         }
 
-        return textArray;
+        return nlp(formattedText);
     }
 
-    console.log("Es war doch n PDF ?!?!?");
 
-    await Tesseract.recognize(file, "deu", {
-        //logger: (m) => console.log(m) // Optional: Logge den Fortschritt (optional)
-    })
-        .then(({ data: { text } }) => {
-            loading.value = false;
 
-            const modifiedText = text.replace(/(\. )/g, "### "); //removes "." so sentences aren't split into dif. arrays
-            const doc = nlp(modifiedText);
-            textArray = doc.document;
-            jsonResult.value += text;
-        })
-        .catch((error) => {
-            //console.error("Fehler bei der Texterkennung:", error);
-            loading.value = false;
-        });
+    try {
+        // Warten auf das OCR-Ergebnis mit `await`, damit das Ergebnis zurückgegeben wird
+        const { data: { text } } = await Tesseract.recognize(file, "deu");
 
-    return textArray;
+        loading.value = false;
+
+        const modifiedText = text.replace(/(\. )/g, "### "); // Punkte ersetzen
+        const doc = nlp(modifiedText);
+
+        console.log("✅ NLP-Dokument:", doc); // Wird korrekt angezeigt
+
+        return doc; // Wird jetzt richtig zurückgegeben!
+    } catch (error) {
+        console.error("Fehler bei der Texterkennung:", error);
+        loading.value = false;
+        return null;
+    }
 };
 
 // Funktion um gesamtbetrag zu filtern
-const getGesamtBetrag = (textArray) => {
-    console.log(textArray);
+const getGesamtBetrag = (nlpDoc) => {
+    const textArray = nlpDoc.document;
     const foundNumbers = [];
 
     const relevantWords = [
@@ -134,7 +123,7 @@ const getGesamtBetrag = (textArray) => {
         "mit steuer",
     ];
 
-    const amountRegex = /^(€|EUR)?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)$/;
+    const amountRegex = /^(€|EUR)?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*(€|EUR)?$/;
 
     textArray.forEach((lineArray, index) => {
         let containsRelevantWord = false;
@@ -144,7 +133,6 @@ const getGesamtBetrag = (textArray) => {
         lineArray.forEach((element) => {
             if (element && typeof element.normal === "string") {
                 const text = element.text;
-                let foundWord = "";
 
                 // Prüfen, ob eines der relevanten Wörter enthalten ist
                 const relevantWordFound = relevantWords.some((word) => {
@@ -152,17 +140,17 @@ const getGesamtBetrag = (textArray) => {
                 });
 
                 if (relevantWordFound) {
-                    console.log(
+                    /*console.log(
                         "Relevant word found in line with index: ",
                         index,
                         text,
-                    );
+                    );*/
                     containsRelevantWord = true; // Diese Line enthält eines von unseren KeyWords
                 }
 
                 const amountMatch = text.match(amountRegex);
                 if (amountMatch) {
-                    console.log(amountMatch);
+                    console.log(amountMatch," found in line: ", index);
                     foundAmount = amountMatch[0];
                     //console.log("Someamount matches", amountMatch);
                 }
@@ -179,6 +167,10 @@ const getGesamtBetrag = (textArray) => {
         options: foundNumbers,
     };
 };
+
+const getRechnungsAusteller = (textArray) => {
+  console.log(textArray.constructor.name)
+}
 </script>
 
 <template>
